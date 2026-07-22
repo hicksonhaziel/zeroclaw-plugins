@@ -13,6 +13,10 @@ crate-type = ["cdylib", "rlib"]
 wit-bindgen = "0.46"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+bs58 = "0.5"
 
 # Blocking wasi:http client, compiled only into the WASM component. Host tests
 # exercise the pure response validator without a network or WASM toolchain.

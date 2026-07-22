@@ -1,14 +1,17 @@
 # realms-execution-audit
 
-This is the **Phase 1 capability scaffold**, not a completed governance auditor.
-Its only operation proves that the real plugin boundary can validate host
+This is a **Phase 2 deterministic core plus the Phase 1 capability scaffold**,
+not a completed governance auditor. Its only live tool operation proves that
+the real plugin boundary can validate host
 configuration, perform one bounded HTTPS request, validate the response, emit a
 structured component log, and return a bounded result through ZeroClaw.
 
 Mandate's eventual purpose is to verify what a Solana Realms proposal will
-execute rather than trusting its description. No Realm account parsing,
-proposal auditing, instruction decoding, policy, fingerprinting, voting, or
-transaction construction is implemented in this phase.
+execute rather than trusting its description. The offline pure core now parses
+the pinned V2 account fixtures, validates their relationships, reconstructs
+ordered opaque instructions, and fingerprints them. It is intentionally not
+connected to the tool or network. No program-specific instruction decoding,
+proposal audit output, policy, voting, or transaction construction exists.
 
 ## Current operation
 
@@ -26,6 +29,56 @@ rpc_health=ok
 ```
 
 No raw RPC response or endpoint is returned.
+
+## Phase 2 offline governance model
+
+The byte oracle is official SPL Governance tag `governance-v3.1.1`, commit
+`a15fee9d3782c83dfb1f75cb3959d973e0b80d6d`: `state/enums.rs`,
+`state/realm.rs`, `state/governance.rs`, `state/proposal.rs`, and
+`state/proposal_transaction.rs`. Production parsing is manual and bounded; it
+does not deserialize untrusted Borsh `Vec` or `String` values.
+
+Supported account layouts are only `RealmV2`, `MintGovernanceV2`, `ProposalV2`,
+and `ProposalTransactionV2`, owned by the canonical mainnet or test SPL
+Governance v3.1.1 program. V1 layouts, other governance variants, unknown
+discriminators, wrong owners, malformed fields, nonzero reserved/padding bytes,
+and unexpected trailing data fail closed. Canonical zero allocation padding is
+accepted only at its exact pinned length: Governance 2 bytes, Proposal 32 bytes,
+and 8 bytes for a ProposalTransaction whose `executed_at` option is absent.
+
+Conservative limits are 4,096 account bytes, 8 proposal options, 16
+surviving transactions per option, a 64-index discovery high-water span, 8 instructions per transaction, 32 metas per
+instruction, 1,024 instruction-data bytes, 8,192 total executable bytes per
+reconstructed proposal, 256 bytes per discarded display field, and 1,024 discarded display
+bytes per account. These bounds cover the frozen fixture and do not claim
+support for arbitrary DAO sizes.
+
+SPL Governance removal decrements `transactions_count` without decrementing
+`transactions_next_index`, so surviving transaction indices may contain gaps.
+The core requires exactly `transactions_count` unique records with indices below
+the bounded `transactions_next_index` high-water mark, then sorts survivors by
+`transaction_index`. Future discovery must derive the complete bounded range
+`0..transactions_next_index`, tolerate absent removed accounts, and verify that
+the surviving count matches `transactions_count`.
+
+The v1 fingerprint is SHA-256 over canonical binary data beginning exactly with
+`mandate:execution-fingerprint:v1`. It includes realm, governance and proposal
+identity; governing mint; execution flags; option and transaction order;
+ProposalTransaction account addresses; transaction indices and hold-up times;
+every program ID; every ordered account public key and signer/writable bit; and
+every instruction-data byte. Counts and integers use explicit little-endian
+encoding. Proposal state, `transactions_executed_count`, `executed_at`,
+execution status, proposal labels, name and description link are retained where
+needed for validation/display but excluded from this immutable execution hash.
+The frozen fixture hash is
+`4fb663823e32d7abc5162ddf0c29cf234e604311e0a316bdf09a892cea518691`.
+The golden test also constructs the complete canonical preimage independently
+in a test-only buffer before hashing; it does not rely only on the production
+streaming encoder.
+
+Offline fixture provenance, observed slots and raw hashes are documented in
+`tests/fixtures/README.md`; tests verify every hash before parsing and never use
+the network.
 
 ## Configuration and custody
 
