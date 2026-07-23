@@ -185,10 +185,45 @@ fn every_error_rendering_is_bounded() {
 #[test]
 fn unknown_action_is_rejected() {
     assert_eq!(
-        parse_host_execution(&envelope("audit", HashMap::from([("rpc_url", PUBLIC_RPC)]),))
-            .unwrap_err(),
+        parse_host_execution(&envelope(
+            "unknown",
+            HashMap::from([("rpc_url", PUBLIC_RPC)]),
+        ))
+        .unwrap_err(),
         CapabilityError::UnsupportedAction
     );
+}
+
+#[test]
+fn strict_audit_request_accepts_only_version_and_canonical_proposal() {
+    let valid = serde_json::json!({
+        "action": "audit",
+        "schema_version": 1,
+        "proposal": "A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY",
+        "__config": {"rpc_url": PUBLIC_RPC}
+    })
+    .to_string();
+    assert!(matches!(
+        parse_host_execution(&valid).unwrap().action,
+        ToolAction::Audit {
+            schema_version: 1,
+            ..
+        }
+    ));
+
+    for value in [
+        serde_json::json!({"action":"audit","schema_version":2,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"not-a-key","__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","commitment":"processed","__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","limits":{},"__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","rpc_url":"https://example.com","__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","headers":{},"__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","timeout":1,"__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","allowed_governance_programs":[],"__config":{"rpc_url":PUBLIC_RPC}}),
+        serde_json::json!({"action":"audit","schema_version":1,"proposal":"A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY","policy":{},"__config":{"rpc_url":PUBLIC_RPC}}),
+    ] {
+        assert!(parse_host_execution(&value.to_string()).is_err());
+    }
 }
 
 #[test]

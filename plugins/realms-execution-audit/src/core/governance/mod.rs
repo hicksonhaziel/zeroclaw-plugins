@@ -1,4 +1,5 @@
 mod governance_account;
+pub mod pda;
 mod proposal;
 mod proposal_transaction;
 mod realm;

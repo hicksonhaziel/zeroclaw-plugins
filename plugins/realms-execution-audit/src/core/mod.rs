@@ -1,16 +1,21 @@
-//! Pure, deterministic capability-scaffold logic.
+//! Pure, deterministic healthcheck and Realms execution-audit logic.
 //!
 //! This module has no WIT, WASI, HTTP, filesystem, environment, clock,
 //! randomness, model, or ZeroClaw host dependency.
 
 pub mod account;
+pub mod audit;
+pub mod audit_error;
 pub mod cursor;
 pub mod error;
+pub mod evidence;
 pub mod execution;
 pub mod governance;
 pub mod health;
 pub mod limits;
+pub mod output;
 pub mod pubkey;
+pub mod rpc;
 
 pub use error::CapabilityError;
 pub use health::{

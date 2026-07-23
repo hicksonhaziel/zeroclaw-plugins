@@ -19,11 +19,23 @@ pub struct AccountMeta {
     pub is_writable: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Instruction {
     pub program_id: Pubkey,
     pub accounts: Vec<AccountMeta>,
     pub data: Vec<u8>,
+}
+
+impl fmt::Debug for Instruction {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Instruction")
+            .field("program_id", &self.program_id)
+            .field("accounts", &self.accounts)
+            .field("data", &"<redacted>")
+            .field("data_len", &self.data.len())
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -107,3 +119,4 @@ fn add_total(current: usize, amount: usize) -> Result<usize, GovernanceError> {
         Ok(total)
     }
 }
+use core::fmt;

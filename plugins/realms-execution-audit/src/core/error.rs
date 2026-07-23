@@ -23,6 +23,9 @@ pub enum CapabilityError {
     RpcError,
     InvalidRpcEnvelope,
     UnexpectedHealth,
+    UnsupportedSchema,
+    InvalidActionFields,
+    InvalidProposal,
 }
 
 impl CapabilityError {
@@ -45,6 +48,9 @@ impl CapabilityError {
             Self::RpcError => "rpc_error",
             Self::InvalidRpcEnvelope => "invalid_rpc_envelope",
             Self::UnexpectedHealth => "unexpected_rpc_health",
+            Self::UnsupportedSchema => "unsupported_schema",
+            Self::InvalidActionFields => "invalid_action_fields",
+            Self::InvalidProposal => "invalid_proposal",
         }
     }
 

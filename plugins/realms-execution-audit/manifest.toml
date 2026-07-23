@@ -1,6 +1,6 @@
 name = "realms-execution-audit"
 version = "0.1.0"
-description = "T0 read-only Phase 1 capability scaffold for the future Mandate Realms execution auditor"
+description = "T0 read-only Realms execution reconstruction with execution and evidence fingerprints"
 author = "Mandate contributors"
 wasm_path = "realms_execution_audit.wasm"
 capabilities = ["tool"]

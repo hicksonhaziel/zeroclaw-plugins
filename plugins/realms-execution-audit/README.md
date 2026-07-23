@@ -1,17 +1,21 @@
 # realms-execution-audit
 
-This is a **Phase 2 deterministic core plus the Phase 1 capability scaffold**,
-not a completed governance auditor. Its only live tool operation proves that
-the real plugin boundary can validate host
-configuration, perform one bounded HTTPS request, validate the response, emit a
-structured component log, and return a bounded result through ZeroClaw.
+This is a T0/read-only Realms execution-reconstruction tool, not a completed
+risk analyzer. Deterministic mocked end-to-end retrieval and one controlled
+live Devnet audit through ZeroClaw have passed. The established healthcheck
+remains available.
 
-Mandate's eventual purpose is to verify what a Solana Realms proposal will
-execute rather than trusting its description. The offline pure core now parses
-the pinned V2 account fixtures, validates their relationships, reconstructs
-ordered opaque instructions, and fingerprints them. It is intentionally not
-connected to the tool or network. No program-specific instruction decoding,
-proposal audit output, policy, voting, or transaction construction exists.
+Mandate verifies executable proposal data rather than trusting proposal
+descriptions. Its pure core parses the pinned V2 account layouts, validates
+their relationships, reconstructs ordered opaque instructions, and produces
+separate execution and evidence-snapshot fingerprints. A transport-independent
+service retrieves the authoritative proposal snapshot through a bounded
+four-call protocol; the production adapter uses WASI HTTP and tests use a
+synchronous mock. Program-specific instruction effects, referenced-account
+hydration, risk policy, voting, and transaction construction are not
+implemented. Consequently, reconstructed instructions remain unresolved and
+`risk_level` remains `null`; the plugin does not claim to understand the
+fixture's VSR instructions or describe them as safe.
 
 ## Current operation
 
@@ -29,6 +33,64 @@ rpc_health=ok
 ```
 
 No raw RPC response or endpoint is returned.
+
+The strict versioned audit request is:
+
+```json
+{"action":"audit","schema_version":1,"proposal":"<canonical-base58-public-key>"}
+```
+
+Unknown fields are rejected. RPC URL, headers, commitment, program allow-lists,
+policy, timeout and limits cannot be supplied by tool input. A successful
+reconstruction returns bounded JSON (maximum 4,096 bytes) with full canonical
+proposal/governance/realm/program addresses, `retrieval_status`,
+`analysis_status`, both fingerprints, bounded counts, and one deterministic
+unresolved-instruction sample. `unresolved_samples_truncated` truthfully
+reports when additional unresolved instructions exist. Because effect decoders
+and policy are not implemented, any reconstructed instructions produce
+`analysis_status="unresolved"`, `risk_level=null`, and
+`risk_reason="policy_not_implemented"`; the plugin never describes that result
+as safe.
+
+## Authoritative retrieval
+
+The service makes exactly four calls without retries: `getAccountInfo` for the
+proposal, governance and realm, followed by one `getMultipleAccounts`. Each
+later call uses finalized commitment, base64 encoding, and a nondecreasing
+`minContextSlot`. ProposalTransaction addresses are derived for every bounded
+position in `0..transactions_next_index`; explicit nulls represent removed
+indices. The final request contains proposal, governance, realm and all derived
+transaction addresses in canonical order.
+
+Preliminary observations only discover that final address set. After the final
+batch, every parent and transaction is reparsed and all ownership,
+discriminator, PDA, relationship, survivor-count and ordering checks are rerun.
+Preliminary and final parent owner, executable bit and exact data must match.
+Final lamports and rent epoch are authoritative and need not match preliminary
+values. The execution model and both fingerprints use only final observations.
+
+Limits are: four RPC calls; 4,096 request bytes; 8,192 bytes for each preliminary
+response; 409,600 bytes for the final response; 434,176 aggregate response
+bytes; 4,096 decoded bytes and 5,464 canonical base64 bytes per account; 64
+aggregate transaction discovery positions; and 67 final addresses. The
+instruction/account/text limits below still apply.
+
+ProposalTransaction PDA derivation follows pinned SPL Governance v3.1.1:
+`b"governance"`, proposal key, one-byte option index, little-endian `u16`
+transaction index, and canonical descending bump search with the governance
+program and `ProgramDerivedAddress` suffix. Frozen fixture vectors are indices
+0/1/2 with bumps 255/255/252 and addresses recorded in the audit tests.
+
+The independent evidence fingerprint is SHA-256 over canonical binary data
+beginning `mandate:evidence-snapshot:v1`. It binds execution fingerprint v1,
+governance program, finalized commitment tag, authoritative final context slot,
+and each final observation in request order: role and transaction coordinates,
+address, presence, then (when present) owner, executable bit, lamports, rent
+epoch, raw length and raw-data SHA-256. Null transaction observations are
+included. It excludes request IDs, preliminary slots and values, RPC URL,
+headers, local timestamps, descriptions and summaries. Its frozen fixture hash
+is `f67bad3d151a0ee7723fbecb278fd60541662f394f26220c7fb5667a358909f4`;
+the test suite verifies it using an independent test-only preimage encoder.
 
 ## Phase 2 offline governance model
 
@@ -109,8 +171,12 @@ The minimum manifest permissions are:
 
 The endpoint is never accepted from tool-call input, returned to the agent, or
 written to logs. `RpcEndpoint` has a constant-redacted `Debug` implementation
-and no `Display` implementation. The request uses a 10-second connection
-timeout and accepts at most 512 response bytes.
+and no `Display` implementation. The healthcheck uses a 10-second connection
+timeout and accepts at most 512 response bytes. Audit retrieval uses separate
+limits: 8,192 bytes for each preliminary response, 409,600 bytes for the final
+batch, and 434,176 aggregate response bytes. ZeroClaw v0.8.3 and waki do not
+provide a separately proven whole-exchange deadline; controlled runtime proofs
+therefore use an external 60-second process deadline.
 
 ## Threat boundary
 
@@ -213,3 +279,20 @@ for regular use:
 
 The final command requires a configured ZeroClaw provider. Keep provider
 credentials outside the repository and redact them from evidence.
+
+## Controlled live proof
+
+The final Phase 3 checkpoint proof used the exact 479,906-byte component with
+SHA-256
+`0ffe21bb923a365c5d2c77dbed9f056f15f539c5b0295912287b261d2114d16d`
+and the unmodified ZeroClaw v0.8.3 host with SHA-256
+`20cc27941beeeaa9930f59757ab9fa9c1eedaf348f7a28aba942bf5d8448b91b`.
+The read-only audit completed at finalized slot `478319715`. Execution
+fingerprint v1 remained
+`4fb663823e32d7abc5162ddf0c29cf234e604311e0a316bdf09a892cea518691`;
+the slot-specific evidence fingerprint was
+`a088c8f9c491d205f3bdc70a709789af2eaffefc06f3f2bda1525cbcbd23bb94`.
+The 1,163-byte result rendered one unresolved sample and set
+`unresolved_samples_truncated=true`. The proof made only three
+`getAccountInfo` calls and one `getMultipleAccounts`; it performed no write,
+signing, wallet, transaction, or token operation.

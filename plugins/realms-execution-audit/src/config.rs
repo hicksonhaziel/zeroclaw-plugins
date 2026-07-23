@@ -12,6 +12,10 @@ use crate::core::CapabilityError;
 #[serde(deny_unknown_fields)]
 struct ExecuteEnvelope {
     action: String,
+    #[serde(default)]
+    schema_version: Option<u8>,
+    #[serde(default)]
+    proposal: Option<String>,
     #[serde(rename = "__config", default)]
     config: HashMap<String, String>,
 }
@@ -28,7 +32,30 @@ pub fn parse_host_execution(args: &str) -> Result<ValidatedExecution, Capability
     }
     let envelope: ExecuteEnvelope =
         serde_json::from_str(args).map_err(|_| CapabilityError::MalformedInput)?;
-    let action = validate_action(&envelope.action)?;
+    let action = match validate_action(&envelope.action) {
+        Ok(ToolAction::Healthcheck) => {
+            if envelope.schema_version.is_some() || envelope.proposal.is_some() {
+                return Err(CapabilityError::InvalidActionFields);
+            }
+            ToolAction::Healthcheck
+        }
+        Err(CapabilityError::UnsupportedAction) if envelope.action == "audit" => {
+            if envelope.schema_version != Some(1) {
+                return Err(CapabilityError::UnsupportedSchema);
+            }
+            let proposal = envelope
+                .proposal
+                .as_deref()
+                .and_then(crate::core::pubkey::Pubkey::from_base58)
+                .ok_or(CapabilityError::InvalidProposal)?;
+            ToolAction::Audit {
+                schema_version: 1,
+                proposal,
+            }
+        }
+        Ok(ToolAction::Audit { .. }) => return Err(CapabilityError::UnsupportedAction),
+        Err(error) => return Err(error),
+    };
     let raw_endpoint = envelope
         .config
         .get("rpc_url")

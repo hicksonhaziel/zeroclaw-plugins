@@ -9,9 +9,13 @@ use super::limits::{
     MAX_ACTION_BYTES, MAX_ENDPOINT_BYTES, MAX_RESPONSE_BYTES, MAX_SUCCESS_OUTPUT_BYTES,
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ToolAction {
     Healthcheck,
+    Audit {
+        schema_version: u8,
+        proposal: super::pubkey::Pubkey,
+    },
 }
 
 pub fn validate_action(action: &str) -> Result<ToolAction, CapabilityError> {

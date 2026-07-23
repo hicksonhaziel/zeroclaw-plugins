@@ -3,7 +3,7 @@ name = "realms-execution-audit"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Phase 1 ZeroClaw capability scaffold for the future Mandate Realms execution auditor"
+description = "Bounded read-only Realms execution reconstruction and fingerprinting for ZeroClaw"
 publish = false
 
 [lib]
@@ -14,9 +14,9 @@ wit-bindgen = "0.46"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-
-[dev-dependencies]
-bs58 = "0.5"
+base64 = "=0.22.1"
+bs58 = "=0.5.1"
+curve25519-dalek = { version = "=4.1.3", default-features = false }
 
 # Blocking wasi:http client, compiled only into the WASM component. Host tests
 # exercise the pure response validator without a network or WASM toolchain.

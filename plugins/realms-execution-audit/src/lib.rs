@@ -1,13 +1,36 @@
-//! Phase 1 capability scaffold for Mandate's future Realms execution auditor.
+//! Bounded read-only Realms execution reconstruction for Mandate.
 //!
-//! This component intentionally performs no governance work. Its only operation
-//! proves the production boundary: strict tool input, host-only configuration,
-//! bounded HTTPS, strict response validation, structured logging, and bounded
-//! output. Pure logic lives in [`core`]; this file is the thin WIT adapter.
+//! The component exposes the established healthcheck and dispatches a versioned
+//! audit request into a shared transport-independent orchestration service.
+//! Instruction effects and risk remain deliberately unresolved. Pure logic
+//! lives in [`core`]; this file remains the thin WIT adapter.
 
 pub mod config;
 pub mod core;
 pub mod rpc;
+
+use crate::core::audit::{run_audit, AuditOutcome};
+use crate::core::audit_error::AuditError;
+use crate::core::output::render_audit_outcome;
+use crate::core::pubkey::Pubkey;
+use crate::core::rpc::RpcTransport;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AuditDispatch {
+    pub outcome: AuditOutcome,
+    pub output: String,
+}
+
+/// Shared audit dispatch used by both the WIT entry point and deterministic
+/// mocked component tests.
+pub fn execute_audit_with_transport<T: RpcTransport>(
+    proposal: Pubkey,
+    transport: &mut T,
+) -> Result<AuditDispatch, AuditError> {
+    let outcome = run_audit(transport, proposal);
+    let output = render_audit_outcome(&outcome)?;
+    Ok(AuditDispatch { outcome, output })
+}
 
 #[cfg(target_family = "wasm")]
 mod component {
@@ -18,9 +41,10 @@ mod component {
     });
 
     use crate::config::parse_host_execution;
-    use crate::core::limits::MAX_ACTION_BYTES;
+    use crate::core::audit::AuditOutcome;
+    use crate::core::limits::{MAX_ACTION_BYTES, MAX_PROPOSAL_ADDRESS_BYTES};
     use crate::core::{CapabilityError, ToolAction};
-    use crate::rpc::perform_healthcheck;
+    use crate::rpc::{perform_healthcheck, WasiRpcTransport};
     use exports::zeroclaw::plugin::plugin_info::Guest as PluginInfo;
     use exports::zeroclaw::plugin::tool::{Guest as Tool, ToolResult};
     use zeroclaw::plugin::logging::{
@@ -49,23 +73,44 @@ mod component {
         }
 
         fn description() -> String {
-            "Phase 1 capability scaffold only. Runs a bounded, read-only Solana RPC healthcheck; it does not audit governance proposals."
+            "Runs a healthcheck or bounded read-only Realms execution reconstruction. Returns execution and evidence fingerprints; instruction effects and risk remain unresolved."
                 .to_owned()
         }
 
         fn parameters_schema() -> String {
             serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["healthcheck"],
-                        "maxLength": MAX_ACTION_BYTES,
-                        "description": "Run the Phase 1 bounded capability healthcheck."
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "const": "healthcheck",
+                                "maxLength": MAX_ACTION_BYTES
+                            }
+                        },
+                        "required": ["action"],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "const": "audit",
+                                "maxLength": MAX_ACTION_BYTES
+                            },
+                            "schema_version": {"type": "integer", "const": 1},
+                            "proposal": {
+                                "type": "string",
+                                "maxLength": MAX_PROPOSAL_ADDRESS_BYTES,
+                                "description": "Full canonical base58 proposal public key."
+                            }
+                        },
+                        "required": ["action", "schema_version", "proposal"],
+                        "additionalProperties": false
                     }
-                },
-                "required": ["action"],
-                "additionalProperties": false
+                ]
             })
             .to_string()
         }
@@ -78,6 +123,63 @@ mod component {
 
             let result = match execution.action {
                 ToolAction::Healthcheck => perform_healthcheck(&execution.endpoint),
+                ToolAction::Audit { proposal, .. } => {
+                    let mut transport = WasiRpcTransport::new(&execution.endpoint);
+                    let dispatch =
+                        match crate::execute_audit_with_transport(proposal, &mut transport) {
+                            Ok(dispatch) => dispatch,
+                            Err(_) => {
+                                emit(
+                                    LogLevel::Warn,
+                                    PluginAction::Fail,
+                                    PluginOutcome::Failure,
+                                    "Bounded Realms audit output failed",
+                                    "{\"operation\":\"audit\",\"retrieval_status\":\"failed\"}",
+                                );
+                                return Ok(ToolResult {
+                                    success: false,
+                                    output: String::new(),
+                                    error: Some("error=audit_output_failed".to_owned()),
+                                });
+                            }
+                        };
+                    let success = !matches!(dispatch.outcome, AuditOutcome::Failed(_));
+                    let status = match &dispatch.outcome {
+                        AuditOutcome::Complete(_) => "complete",
+                        AuditOutcome::Incomplete(_) => "incomplete",
+                        AuditOutcome::Failed(_) => "failed",
+                    };
+                    let attrs =
+                        format!("{{\"operation\":\"audit\",\"retrieval_status\":\"{status}\"}}");
+                    emit(
+                        if success {
+                            LogLevel::Info
+                        } else {
+                            LogLevel::Warn
+                        },
+                        if success {
+                            PluginAction::Complete
+                        } else {
+                            PluginAction::Fail
+                        },
+                        if success {
+                            PluginOutcome::Success
+                        } else {
+                            PluginOutcome::Failure
+                        },
+                        "Bounded Realms execution audit completed",
+                        &attrs,
+                    );
+                    return Ok(ToolResult {
+                        success,
+                        output: dispatch.output,
+                        error: if success {
+                            None
+                        } else {
+                            Some("error=audit_retrieval_failed".to_owned())
+                        },
+                    });
+                }
             };
             match result {
                 Ok(health) => {
@@ -85,7 +187,7 @@ mod component {
                         LogLevel::Info,
                         PluginAction::Complete,
                         PluginOutcome::Success,
-                        "Phase 1 capability healthcheck completed",
+                        "Capability healthcheck completed",
                         "{\"operation\":\"healthcheck\"}",
                     );
                     Ok(ToolResult {
@@ -105,7 +207,7 @@ mod component {
             LogLevel::Warn,
             PluginAction::Fail,
             PluginOutcome::Failure,
-            "Phase 1 capability healthcheck failed",
+            "Capability healthcheck failed",
             &attrs,
         );
         ToolResult {

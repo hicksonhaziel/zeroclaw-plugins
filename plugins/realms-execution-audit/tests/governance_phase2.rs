@@ -684,6 +684,16 @@ fn errors_and_debug_do_not_leak_raw_account_or_discarded_text() {
     let error_debug = format!("{error:?}");
     assert!(!error_debug.contains("Grant testing #8"));
     assert!(!error_debug.contains(&hex_prefix(&malformed)));
+
+    let transaction = parse_proposal_transaction(&snapshot(
+        TRANSACTION_0_ADDRESS,
+        &decode_hex(TRANSACTION_0_HEX),
+    ))
+    .unwrap();
+    let instruction_bytes = format!("{:?}", transaction.instructions[0].data);
+    let transaction_debug = format!("{transaction:?}");
+    assert!(transaction_debug.contains("<redacted>"));
+    assert!(!transaction_debug.contains(&instruction_bytes));
 }
 
 fn hex_prefix(bytes: &[u8]) -> String {

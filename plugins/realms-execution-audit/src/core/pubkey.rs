@@ -11,6 +11,22 @@ impl Pubkey {
     pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
+
+    pub fn from_base58(value: &str) -> Option<Self> {
+        if value.is_empty() || value.len() > 44 {
+            return None;
+        }
+        let mut bytes = [0u8; 32];
+        let length = bs58::decode(value).onto(&mut bytes).ok()?;
+        if length != bytes.len() || bs58::encode(bytes).into_string() != value {
+            return None;
+        }
+        Some(Self(bytes))
+    }
+
+    pub fn to_base58(self) -> String {
+        bs58::encode(self.0).into_string()
+    }
 }
 
 impl fmt::Debug for Pubkey {
