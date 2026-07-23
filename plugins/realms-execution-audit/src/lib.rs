@@ -2,8 +2,9 @@
 //!
 //! The component exposes the established healthcheck and dispatches a versioned
 //! audit request into a shared transport-independent orchestration service.
-//! Instruction effects and risk remain deliberately unresolved. Pure logic
-//! lives in [`core`]; this file remains the thin WIT adapter.
+//! Supported System and classic SPL Token instructions receive deterministic
+//! findings; unsupported or malformed instructions remain unresolved. Pure
+//! logic lives in [`core`]; this file remains the thin WIT adapter.
 
 pub mod config;
 pub mod core;
@@ -73,7 +74,7 @@ mod component {
         }
 
         fn description() -> String {
-            "Runs a healthcheck or bounded read-only Realms execution reconstruction. Returns execution and evidence fingerprints; instruction effects and risk remain unresolved."
+            "Runs a healthcheck or bounded read-only Realms execution audit. Returns fingerprints and deterministic findings for supported System and classic SPL Token instructions; unsupported effects remain unresolved."
                 .to_owned()
         }
 

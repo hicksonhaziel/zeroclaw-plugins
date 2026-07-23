@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use realms_execution_audit::core::audit::{AuditComplete, AuditOutcome, UnresolvedSample};
+use realms_execution_audit::core::audit::{AuditComplete, AuditOutcome};
 use realms_execution_audit::core::audit_error::AuditError;
 use realms_execution_audit::core::evidence::{
     fingerprint_evidence_v1, EvidenceSnapshot, FinalObservation, ObservationRole,
@@ -14,6 +14,9 @@ use realms_execution_audit::core::limits::{
     MAX_AUDIT_OUTPUT_BYTES, MAX_FINAL_BATCH_RESPONSE_BYTES, MAX_SINGLE_ACCOUNT_RESPONSE_BYTES,
 };
 use realms_execution_audit::core::output::render_audit_outcome;
+use realms_execution_audit::core::policy::{
+    InstructionLocation, UnresolvedInstruction, UnresolvedReason,
+};
 use realms_execution_audit::core::pubkey::{Pubkey, MAINNET_GOVERNANCE_PROGRAM};
 use realms_execution_audit::core::rpc::{
     account_info_request, multiple_accounts_request, AccountObservation, HttpResponse, RpcRequest,
@@ -179,7 +182,7 @@ fn coherent_fixture_runs_exact_four_call_component_dispatch() {
     assert_eq!(output["retrieval_status"], "complete");
     assert_eq!(output["analysis_status"], "unresolved");
     assert!(output["risk_level"].is_null());
-    assert_eq!(output["risk_reason"], "policy_not_implemented");
+    assert_eq!(output["risk_reason"], "no_supported_effects");
     assert_eq!(output["proposal"], PROPOSAL);
     assert_eq!(output["governance"], GOVERNANCE);
     assert_eq!(output["realm"], REALM);
@@ -508,12 +511,16 @@ fn worst_case_bounded_output_caps_unresolved_samples() {
     let mut transport = MockTransport::new(standard_responses());
     let mut complete = complete(&mut transport);
     complete.instruction_count = 512;
-    complete.unresolved_samples = (0..8)
-        .map(|instruction_index| UnresolvedSample {
-            option_index: 0,
-            transaction_index: 1,
-            instruction_index,
-            program: pubkey(PROPOSAL),
+    complete.analysis.unresolved_instruction_count = 512;
+    complete.analysis.unresolved_samples = (0..8)
+        .map(|instruction_index| UnresolvedInstruction {
+            location: InstructionLocation {
+                option_index: 0,
+                transaction_index: 1,
+                instruction_index,
+                program: pubkey(PROPOSAL),
+            },
+            reason: UnresolvedReason::UnsupportedProgram,
         })
         .collect();
     let output = render_audit_outcome(&AuditOutcome::Complete(Box::new(complete))).unwrap();
@@ -529,7 +536,7 @@ fn normal_success_output_meets_the_agent_size_target() {
     let output =
         render_audit_outcome(&AuditOutcome::Complete(Box::new(complete(&mut transport)))).unwrap();
     assert!(
-        output.len() <= 1_200,
+        output.len() <= 1_600,
         "normal output was {} bytes",
         output.len()
     );

@@ -49,6 +49,14 @@ pub const TEST_GOVERNANCE_PROGRAM: Pubkey = Pubkey::new([
     149, 181, 150, 32, 101, 97, 90, 133, 48, 11, 30,
 ]);
 
+pub const SYSTEM_PROGRAM: Pubkey = Pubkey::new([0; 32]);
+
+/// Classic SPL Token Program (`Tokenkeg...`), deliberately excluding Token-2022.
+pub const CLASSIC_SPL_TOKEN_PROGRAM: Pubkey = Pubkey::new([
+    6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235, 121, 172, 28, 180, 133, 237,
+    95, 91, 55, 145, 58, 140, 245, 133, 126, 255, 0, 169,
+]);
+
 pub fn is_supported_governance_program(owner: Pubkey) -> bool {
     owner == MAINNET_GOVERNANCE_PROGRAM || owner == TEST_GOVERNANCE_PROGRAM
 }

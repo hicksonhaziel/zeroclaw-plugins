@@ -13,21 +13,13 @@ use crate::core::governance::{
 use crate::core::limits::{
     MAX_AGGREGATE_DISCOVERY_POSITIONS, MAX_FINAL_BATCH_ADDRESSES, MAX_FINAL_BATCH_RESPONSE_BYTES,
     MAX_RPC_CALLS, MAX_SINGLE_ACCOUNT_RESPONSE_BYTES, MAX_TOTAL_RPC_RESPONSE_BYTES,
-    MAX_UNRESOLVED_SAMPLES,
 };
+use crate::core::policy::{analyze_execution, AnalysisReport};
 use crate::core::pubkey::{is_supported_governance_program, Pubkey};
 use crate::core::rpc::{
     account_info_request, multiple_accounts_request, parse_multiple_accounts, parse_single_account,
     AccountObservation, HttpResponse, RpcRequest, RpcTransport,
 };
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct UnresolvedSample {
-    pub option_index: u8,
-    pub transaction_index: u16,
-    pub instruction_index: u16,
-    pub program: Pubkey,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AuditComplete {
@@ -44,7 +36,7 @@ pub struct AuditComplete {
     pub instruction_count: usize,
     pub execution_fingerprint: Fingerprint,
     pub evidence_fingerprint: Fingerprint,
-    pub unresolved_samples: Vec<UnresolvedSample>,
+    pub analysis: AnalysisReport,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -259,26 +251,14 @@ fn run_audit_inner<T: RpcTransport>(
         observations,
     })?;
 
-    let mut instruction_count = 0usize;
-    let mut unresolved_samples = Vec::new();
-    for option in &execution.options {
-        for transaction in &option.transactions {
-            for (instruction_index, instruction) in transaction.instructions.iter().enumerate() {
-                instruction_count = instruction_count
-                    .checked_add(1)
-                    .ok_or(AuditError::DiscoveryLimit)?;
-                if unresolved_samples.len() < MAX_UNRESOLVED_SAMPLES {
-                    unresolved_samples.push(UnresolvedSample {
-                        option_index: option.option_index,
-                        transaction_index: transaction.transaction_index,
-                        instruction_index: u16::try_from(instruction_index)
-                            .map_err(|_| AuditError::DiscoveryLimit)?,
-                        program: instruction.program_id,
-                    });
-                }
-            }
-        }
-    }
+    let instruction_count = execution
+        .options
+        .iter()
+        .flat_map(|option| &option.transactions)
+        .map(|transaction| transaction.instructions.len())
+        .try_fold(0usize, |total, count| total.checked_add(count))
+        .ok_or(AuditError::DiscoveryLimit)?;
+    let analysis = analyze_execution(&execution);
 
     Ok(AuditComplete {
         proposal: execution.proposal,
@@ -298,7 +278,7 @@ fn run_audit_inner<T: RpcTransport>(
         instruction_count,
         execution_fingerprint,
         evidence_fingerprint,
-        unresolved_samples,
+        analysis,
     })
 }
 

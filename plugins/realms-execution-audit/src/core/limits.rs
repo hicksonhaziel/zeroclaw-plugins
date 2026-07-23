@@ -42,6 +42,8 @@ pub const MAX_BASE64_ACCOUNT_BYTES: usize = 5_464;
 pub const MAX_RPC_API_VERSION_BYTES: usize = 32;
 pub const MAX_AUDIT_OUTPUT_BYTES: usize = 4_096;
 pub const MAX_UNRESOLVED_SAMPLES: usize = 8;
+/// Verified finding samples retained by the pure analysis result and renderer.
+pub const MAX_FINDING_SAMPLES: usize = 2;
 /// Samples rendered in the normal agent-facing result; the total remains in counts.
 pub const MAX_RENDERED_UNRESOLVED_SAMPLES: usize = 1;
 pub const MAX_LOG_ATTRS_BYTES: usize = 256;

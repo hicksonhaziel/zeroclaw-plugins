@@ -7,6 +7,7 @@ pub mod account;
 pub mod audit;
 pub mod audit_error;
 pub mod cursor;
+pub mod decoder;
 pub mod error;
 pub mod evidence;
 pub mod execution;
@@ -14,6 +15,7 @@ pub mod governance;
 pub mod health;
 pub mod limits;
 pub mod output;
+pub mod policy;
 pub mod pubkey;
 pub mod rpc;
 

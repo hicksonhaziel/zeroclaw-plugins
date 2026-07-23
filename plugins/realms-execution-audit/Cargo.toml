@@ -3,7 +3,7 @@ name = "realms-execution-audit"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Bounded read-only Realms execution reconstruction and fingerprinting for ZeroClaw"
+description = "Bounded Realms reconstruction, fingerprints, and deterministic instruction risk analysis"
 publish = false
 
 [lib]

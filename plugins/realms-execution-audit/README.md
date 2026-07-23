@@ -1,21 +1,23 @@
 # realms-execution-audit
 
-This is a T0/read-only Realms execution-reconstruction tool, not a completed
-risk analyzer. Deterministic mocked end-to-end retrieval and one controlled
-live Devnet audit through ZeroClaw have passed. The established healthcheck
-remains available.
+This is a T0/read-only Realms execution-reconstruction and deterministic
+instruction-analysis tool. Deterministic mocked end-to-end retrieval and a
+controlled live Devnet audit through ZeroClaw have passed. The established
+healthcheck remains available.
 
 Mandate verifies executable proposal data rather than trusting proposal
 descriptions. Its pure core parses the pinned V2 account layouts, validates
 their relationships, reconstructs ordered opaque instructions, and produces
-separate execution and evidence-snapshot fingerprints. A transport-independent
+separate execution and evidence-snapshot fingerprints. Its Phase 4 pure
+analysis layer strictly decodes supported System Program and classic SPL Token
+instructions and applies a fixed local risk policy. A transport-independent
 service retrieves the authoritative proposal snapshot through a bounded
 four-call protocol; the production adapter uses WASI HTTP and tests use a
-synchronous mock. Program-specific instruction effects, referenced-account
-hydration, risk policy, voting, and transaction construction are not
-implemented. Consequently, reconstructed instructions remain unresolved and
-`risk_level` remains `null`; the plugin does not claim to understand the
-fixture's VSR instructions or describe them as safe.
+synchronous mock. Referenced-account hydration, Token-2022, VSR and other
+program decoders, voting, and transaction construction are not implemented.
+Unsupported or malformed instructions keep analysis unresolved without hiding
+any separately proven finding. The plugin does not claim to understand the
+live fixture's VSR instructions or describe them as safe.
 
 ## Current operation
 
@@ -42,15 +44,56 @@ The strict versioned audit request is:
 
 Unknown fields are rejected. RPC URL, headers, commitment, program allow-lists,
 policy, timeout and limits cannot be supplied by tool input. A successful
-reconstruction returns bounded JSON (maximum 4,096 bytes) with full canonical
+reconstruction returns version-2 bounded JSON (maximum 4,096 bytes) with full canonical
 proposal/governance/realm/program addresses, `retrieval_status`,
-`analysis_status`, both fingerprints, bounded counts, and one deterministic
-unresolved-instruction sample. `unresolved_samples_truncated` truthfully
-reports when additional unresolved instructions exist. Because effect decoders
-and policy are not implemented, any reconstructed instructions produce
-`analysis_status="unresolved"`, `risk_level=null`, and
-`risk_reason="policy_not_implemented"`; the plugin never describes that result
-as safe.
+`analysis_status`, independent `risk_level`, both fingerprints, bounded counts,
+at most two highest-risk verified-finding samples, and at most one
+unresolved-instruction sample. Higher severity displaces a retained lower-risk
+sample; equal-severity ties preserve execution order. The two truncation flags
+truthfully report omitted samples. Unsupported
+or malformed instructions produce `analysis_status="unresolved"` but never
+erase or lower the maximum risk of known effects. An unknown-only proposal has
+`risk_level=null`; the plugin never describes that result as safe.
+
+## Deterministic effects and policy v1
+
+Phase 4 uses these official encoding and account-meta oracles:
+
+- Solana tag `v1.14.12`, commit
+  `979792ba1489ada3fdb5f4ab2bfee5203b33dc5a`,
+  `sdk/program/src/system_instruction.rs`: `SystemInstruction::Transfer` and
+  `transfer`. The canonical payload is the four-byte little-endian enum
+  discriminant `2` followed by little-endian `u64`; source is writable and
+  signer, destination is writable and not signer.
+- Solana Program Library tag `governance-v3.1.1`, commit
+  `a15fee9d3782c83dfb1f75cb3959d973e0b80d6d`,
+  `token/program/src/instruction.rs`: `TokenInstruction`, its strict
+  pack/unpack implementation, `AuthorityType`, and the `transfer`,
+  `transfer_checked`, `set_authority`, and `close_account` constructors. The
+  constructors are the account ordering, writable, signer, and bounded
+  multisig oracle.
+
+Only System `Transfer` and classic SPL Token `Transfer`, `TransferChecked`,
+`SetAuthority`, and `CloseAccount` are decoded. The classic program is pinned
+to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`; Token-2022 is deliberately
+unsupported. Payload size, discriminant, trailing bytes, account count/order,
+writable flags, and single-authority or 1–11 multisig signer form are checked
+before an effect is produced.
+
+Effects contain public keys and integer atomic amounts, never inferred labels.
+Transfers are low risk, token-account closure is high, and changes to mint,
+freeze, account-owner, or close authority are critical. Setting an authority
+to `None` remains critical because it is irreversible. The highest known
+severity is returned independently of completeness. `TransferChecked` retains
+its `u64` atomic amount and exposes `instruction_decimals`, which comes only
+from the executable instruction payload. It is not independently verified
+against a hydrated mint account, so Phase 4 does not emit `amount_display`.
+Phase 5 may add a verified display amount only after validating the mint
+account owner, layout, identity, and decimals.
+
+Proposal name, description and description link are not inputs to decoding or
+policy. Effects and findings are derived from bytes already bound by execution
+fingerprint v1, so neither fingerprint format changes in Phase 4.
 
 ## Authoritative retrieval
 
@@ -193,7 +236,7 @@ therefore use an external 60-second process deadline.
   `Tool::execute`; the plugin's production parser is therefore the enforcement
   boundary for action, envelope, and endpoint validation.
 - RPC status and bytes are untrusted, strictly parsed, and bounded.
-- Proposal text will never become a policy input.
+- Proposal text is not a decoder or policy input.
 
 Only ZeroClaw structured component logging is used. The plugin does not write
 to stdout or stderr.
@@ -296,3 +339,20 @@ The 1,163-byte result rendered one unresolved sample and set
 `unresolved_samples_truncated=true`. The proof made only three
 `getAccountInfo` calls and one `getMultipleAccounts`; it performed no write,
 signing, wallet, transaction, or token operation.
+
+## Phase 4 regression proof
+
+The corrected Phase 4 release component is 488,892 bytes with SHA-256
+`d8d24708cbb7b67c8344a4816b9f0565bf3911f3d0ac6853a3e402f1bbe8c0de`.
+An independent fresh build and the clean upstream validator staged identical
+bytes. Installed into the same unmodified ZeroClaw v0.8.3 host, the existing
+healthcheck returned its exact four-line result. A single bounded read-only
+audit of the controlled VSR proposal completed at finalized slot `478338302`.
+Execution fingerprint v1 remained
+`4fb663823e32d7abc5162ddf0c29cf234e604311e0a316bdf09a892cea518691`;
+the slot-specific evidence fingerprint was
+`51a8a7914110e7243d4d8338c68a0882d74ae925e3514c74e38f489bc48f274e`.
+
+The 1,175-byte schema-v2 result correctly reported two unsupported VSR
+instructions, zero known findings, unresolved analysis, and null risk. This is
+regression evidence, not VSR decoding or a safety conclusion.
