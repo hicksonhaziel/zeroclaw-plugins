@@ -1,12 +1,12 @@
-use realms_execution_audit::core::account::{identify_account, AccountKind, AccountSnapshot};
-use realms_execution_audit::core::execution::{
+use mandate_core::core::account::{identify_account, AccountKind, AccountSnapshot};
+use mandate_core::core::execution::{
     fingerprint_v1, reconstruct_execution, ExecutionModel, FINGERPRINT_V1_DOMAIN,
 };
-use realms_execution_audit::core::governance::{
+use mandate_core::core::governance::{
     parse_governance, parse_proposal, parse_proposal_transaction, parse_realm, GovernanceError,
 };
-use realms_execution_audit::core::limits::MAX_ACCOUNT_DATA_BYTES;
-use realms_execution_audit::core::pubkey::{Pubkey, MAINNET_GOVERNANCE_PROGRAM};
+use mandate_core::core::limits::MAX_ACCOUNT_DATA_BYTES;
+use mandate_core::core::pubkey::{Pubkey, MAINNET_GOVERNANCE_PROGRAM};
 use sha2::{Digest, Sha256};
 
 const REALM_ADDRESS: &str = "49STYcijF8oCwrUqM48sqWAoRL57p9KpXfHGvGiaRfDY";
@@ -51,10 +51,10 @@ fn snapshot<'a>(address: &str, data: &'a [u8]) -> AccountSnapshot<'a> {
 }
 
 fn parsed_chain() -> (
-    realms_execution_audit::core::governance::RealmAccount,
-    realms_execution_audit::core::governance::GovernanceAccount,
-    realms_execution_audit::core::governance::ProposalAccount,
-    Vec<realms_execution_audit::core::governance::ProposalTransactionAccount>,
+    mandate_core::core::governance::RealmAccount,
+    mandate_core::core::governance::GovernanceAccount,
+    mandate_core::core::governance::ProposalAccount,
+    Vec<mandate_core::core::governance::ProposalTransactionAccount>,
 ) {
     let realm_bytes = decode_hex(REALM_HEX);
     let governance_bytes = decode_hex(GOVERNANCE_HEX);

@@ -330,6 +330,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
+name = "mandate-core"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "bs58",
+ "curve25519-dalek",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -388,9 +400,22 @@ dependencies = [
  "base64",
  "bs58",
  "curve25519-dalek",
+ "mandate-core",
  "serde",
  "serde_json",
  "sha2",
+ "waki",
+ "wit-bindgen 0.46.0",
+]
+
+[[package]]
+name = "realms-vote-build"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "mandate-core",
+ "serde",
+ "serde_json",
  "waki",
  "wit-bindgen 0.46.0",
 ]

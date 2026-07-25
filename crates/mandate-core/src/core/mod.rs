@@ -18,6 +18,8 @@ pub mod output;
 pub mod policy;
 pub mod pubkey;
 pub mod rpc;
+pub mod vote;
+pub mod vote_service;
 
 pub use error::CapabilityError;
 pub use health::{

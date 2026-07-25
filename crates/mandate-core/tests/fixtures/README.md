@@ -26,6 +26,13 @@ All accounts are owned by `GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw`.
 | `proposal_v2.hex` | `A35WTABGwuqJZkSEsSwrACCzXK2jPeT7jZRmbq4JR7dY` | ProposalV2 | 366 | `7ee4626687f32d5f844641d3832e0828ee274e7614a8b99bbe4f0148859b3a0a` |
 | `proposal_transaction_0_v2.hex` | `41MAfVcmwtGGzTP12xUaDo2w4grednxyXaDcvZcpnVMp` | ProposalTransactionV2 option 0/index 0 | 611 | `8e42780017b7e7f61be68b8a2ff2dac36c46d77abe3fbea6288a4590af90418a` |
 | `proposal_transaction_1_v2.hex` | `76xgDiVSqaGC6pHH8ucQ8xuUYhQPibYUdWYum7emhEFd` | ProposalTransactionV2 option 0/index 1 | 611 | `5f230aa5479652da92d4d24c3e508d097f6c702002c695c6de5a67562b07447e` |
+| `token_owner_record_v2.hex` | `BYx2rMfnHHbPZ1SJTBTv1HKgWUPUtm7HXWNbqqn6b61o` | TokenOwnerRecordV2 | 282 | `bf283f6c6eab65107459c99143ddb21cca50ad8417688ae00bc203b1840b2549` |
+| `vote_record_v2.hex` | `jhFhkxrLapCqi4CUUr6DEa9QDTdeNG2RXDCt9fyeJAe` | VoteRecordV2 | 89 | `e6dbc785ddaa93e9eb97ba0ec4ca908900b04a80776c1f66243d5862d5e800c1` |
 
 Redistribution note: retain this provenance and the oracle attribution when
 redistributing these immutable public account bytes.
+
+The two vote-related records were re-retrieved together through public
+finalized `getMultipleAccounts`/base64 at slot `478555547` on 2026-07-24 UTC.
+They belong to the same coherent chain and retain the Phase 0 provenance and
+redistribution note; no network refresh occurs in tests.

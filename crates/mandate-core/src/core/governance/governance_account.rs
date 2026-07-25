@@ -18,6 +18,8 @@ pub struct GovernanceAccount {
     pub kind: GovernanceKind,
     pub realm: Pubkey,
     pub governed_account: Pubkey,
+    pub voting_base_time: u32,
+    pub voting_cool_off_time: u32,
 }
 
 pub fn parse_governance(
@@ -32,14 +34,14 @@ pub fn parse_governance(
     read_threshold(&mut cursor)?;
     let _minimum_weight = cursor.read_u64()?;
     let _hold_up = cursor.read_u32()?;
-    let _voting_base = cursor.read_u32()?;
+    let voting_base_time = cursor.read_u32()?;
     read_small_enum(&mut cursor, 2)?;
     read_threshold(&mut cursor)?;
     read_threshold(&mut cursor)?;
     let _minimum_council = cursor.read_u64()?;
     read_small_enum(&mut cursor, 2)?;
     read_threshold(&mut cursor)?;
-    let _cool_off = cursor.read_u32()?;
+    let voting_cool_off_time = cursor.read_u32()?;
     let _deposit_exempt = cursor.read_u8()?;
     require_zero(cursor.read_exact(120)?)?;
     let _active_proposals = cursor.read_u64()?;
@@ -52,6 +54,8 @@ pub fn parse_governance(
         kind: GovernanceKind::MintV2,
         realm,
         governed_account,
+        voting_base_time,
+        voting_cool_off_time,
     })
 }
 

@@ -1,0 +1,9 @@
+name = "realms-vote-build"
+version = "0.1.0"
+description = "T1 build-only policy-controlled unsigned Realms Deny vote builder"
+author = "Mandate contributors"
+wasm_path = "realms_vote_build.wasm"
+capabilities = ["tool"]
+# T1/build-only: trusted RPC configuration and outbound HTTPS only.
+permissions = ["config_read", "http_client"]
+registry = false

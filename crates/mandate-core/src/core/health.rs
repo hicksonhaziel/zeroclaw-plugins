@@ -32,7 +32,7 @@ pub fn validate_action(action: &str) -> Result<ToolAction, CapabilityError> {
 /// deliberately unavailable, preventing accidental URL inclusion.
 ///
 /// ```compile_fail
-/// use realms_execution_audit::core::RpcEndpoint;
+/// use mandate_core::core::RpcEndpoint;
 /// let endpoint = RpcEndpoint::parse("https://example.com").unwrap();
 /// let _ = format!("{endpoint}");
 /// ```
@@ -76,7 +76,10 @@ impl RpcEndpoint {
     }
 
     #[cfg(target_family = "wasm")]
-    pub(crate) fn expose_to_http_adapter(&self) -> &str {
+    /// Exposes the validated endpoint only to a component HTTP adapter.
+    ///
+    /// Shared-core consumers must keep this value out of logs and tool output.
+    pub fn expose_to_http_adapter(&self) -> &str {
         &self.0
     }
 }

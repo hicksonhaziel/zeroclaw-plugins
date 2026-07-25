@@ -350,6 +350,12 @@ mod tests {
             governance: key(11),
             realm: key(12),
             governance_program: key(13),
+            governing_token_mint: key(14),
+            proposal_owner_record: key(15),
+            proposal_state: 2,
+            voting_at: Some(1),
+            voting_base_time: 10,
+            voting_cool_off_time: 0,
             first_observed_slot: 1,
             last_observed_slot: 2,
             authoritative_slot: 2,
@@ -367,6 +373,8 @@ mod tests {
                 unresolved_instruction_count: 0,
                 unresolved_samples: Vec::new(),
             },
+            transaction_positions: Vec::new(),
+            security_bindings: Vec::new(),
         }
     }
 

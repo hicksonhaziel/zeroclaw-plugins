@@ -34,11 +34,15 @@ const TRANSACTION_1: &str = "76xgDiVSqaGC6pHH8ucQ8xuUYhQPibYUdWYum7emhEFd";
 const TRANSACTION_2: &str = "G7grzkzR5JM8ntLM1UymioBZ6sMTd4duZukuTGDvNeGM";
 const OWNER: &str = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw";
 
-const REALM_HEX: &str = include_str!("fixtures/realm_v2.hex");
-const GOVERNANCE_HEX: &str = include_str!("fixtures/mint_governance_v2.hex");
-const PROPOSAL_HEX: &str = include_str!("fixtures/proposal_v2.hex");
-const TRANSACTION_0_HEX: &str = include_str!("fixtures/proposal_transaction_0_v2.hex");
-const TRANSACTION_1_HEX: &str = include_str!("fixtures/proposal_transaction_1_v2.hex");
+const REALM_HEX: &str = include_str!("../../../crates/mandate-core/tests/fixtures/realm_v2.hex");
+const GOVERNANCE_HEX: &str =
+    include_str!("../../../crates/mandate-core/tests/fixtures/mint_governance_v2.hex");
+const PROPOSAL_HEX: &str =
+    include_str!("../../../crates/mandate-core/tests/fixtures/proposal_v2.hex");
+const TRANSACTION_0_HEX: &str =
+    include_str!("../../../crates/mandate-core/tests/fixtures/proposal_transaction_0_v2.hex");
+const TRANSACTION_1_HEX: &str =
+    include_str!("../../../crates/mandate-core/tests/fixtures/proposal_transaction_1_v2.hex");
 
 #[derive(Default)]
 struct MockTransport {

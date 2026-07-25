@@ -1,10 +1,10 @@
-use realms_execution_audit::core::decoder::{decode_instruction, DecodeFailure};
-use realms_execution_audit::core::execution::{ExecutionModel, OrderedOption, OrderedTransaction};
-use realms_execution_audit::core::governance::{AccountMeta, Instruction};
-use realms_execution_audit::core::policy::{
+use mandate_core::core::decoder::{decode_instruction, DecodeFailure};
+use mandate_core::core::execution::{ExecutionModel, OrderedOption, OrderedTransaction};
+use mandate_core::core::governance::{AccountMeta, Instruction};
+use mandate_core::core::policy::{
     analyze_execution, AnalysisStatus, AuthorityType, Effect, RiskLevel, UnresolvedReason,
 };
-use realms_execution_audit::core::pubkey::{Pubkey, CLASSIC_SPL_TOKEN_PROGRAM, SYSTEM_PROGRAM};
+use mandate_core::core::pubkey::{Pubkey, CLASSIC_SPL_TOKEN_PROGRAM, SYSTEM_PROGRAM};
 
 const TOKEN_2022: Pubkey = Pubkey::new([
     6, 221, 246, 225, 238, 117, 143, 222, 24, 66, 93, 188, 228, 108, 205, 218, 182, 26, 252, 77,

@@ -6,7 +6,10 @@ controlled live Devnet audit through ZeroClaw have passed. The established
 healthcheck remains available.
 
 Mandate verifies executable proposal data rather than trusting proposal
-descriptions. Its pure core parses the pinned V2 account layouts, validates
+descriptions. The single authoritative pure core now lives at
+`../../crates/mandate-core`; the plugin retains only the WIT adapter, trusted
+configuration boundary, WASI HTTP transport, structured logging, and
+component-facing tests. The shared core parses the pinned V2 account layouts, validates
 their relationships, reconstructs ordered opaque instructions, and produces
 separate execution and evidence-snapshot fingerprints. Its Phase 4 pure
 analysis layer strictly decodes supported System Program and classic SPL Token
@@ -182,8 +185,8 @@ in a test-only buffer before hashing; it does not rely only on the production
 streaming encoder.
 
 Offline fixture provenance, observed slots and raw hashes are documented in
-`tests/fixtures/README.md`; tests verify every hash before parsing and never use
-the network.
+`../../crates/mandate-core/tests/fixtures/README.md`; tests verify every hash
+before parsing and never use the network.
 
 ## Configuration and custody
 
@@ -243,19 +246,29 @@ to stdout or stderr.
 
 ## Test and build
 
-From this directory:
+Run the authoritative bounty/public-fork validation from the repository root:
 
 ```bash
-cargo fmt --check
-cargo test --locked
-cargo clippy --locked --all-targets -- -D warnings
-cargo clippy --locked --target wasm32-wasip2 -- -D warnings
-cargo build --locked --release --target wasm32-wasip2
+cargo fmt --all -- --check
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo clippy --workspace --target wasm32-wasip2 --locked -- -D warnings
+RUSTFLAGS="--remap-path-prefix=$PWD=." \
+  cargo build --workspace --locked --release --target wasm32-wasip2
+cargo metadata --locked --no-deps --format-version 1
+python3 tools/build-registry.py \
+  --source-plugins plugins --check-metadata registry.json
+git diff --check
 ```
 
-The host tests use modeled response bytes and never access a live network.
+The root workspace deliberately contains only `crates/mandate-core` and this
+plugin; unrelated registry plugins retain their standalone workspaces. The
+path-remapping flag prevents checkout locations from entering release WASM and
+is required for byte-identical clean-clone artifacts. Host tests use modeled
+response bytes and never access a live network.
 
-From the repository root, the upstream component validator is:
+The current upstream isolated component validator is also run once as a
+documented post-judging compatibility check:
 
 ```bash
 REPORT_PATH=/tmp/mandate-packager-run/matrix.tsv \
@@ -265,8 +278,14 @@ CARGO_TARGET_DIR=/tmp/mandate-packager-run/target \
 bash tools/ci/validate_components.sh realms-execution-audit
 ```
 
-That validator stages `manifest.toml` and the release component. The exact
-repository packaging path used by CI is:
+It currently copies `plugins/realms-execution-audit` and `wit/v0` without the
+root `crates/mandate-core`, so it fails closed at the missing relative
+dependency. This is known post-judging restructuring debt and is non-blocking
+for the public-fork bounty route. Do not open a registry PR during the bounty.
+
+After a root-workspace build, stage the exact remapped component with its
+manifest for local ZeroClaw installation. The existing registry publication
+path remains documented below for post-judging work only:
 
 ```bash
 PLANNED_MATRIX_JSON='{"include":[{"id":0,"plugins":["realms-execution-audit"],"release_plugins":["realms-execution-audit"],"strict_plugins":["realms-execution-audit"]}]}'

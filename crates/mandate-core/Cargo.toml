@@ -1,0 +1,18 @@
+[package]
+name = "mandate-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Pure deterministic Mandate governance security core"
+publish = false
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+base64 = "=0.22.1"
+bs58 = "=0.5.1"
+curve25519-dalek = { version = "=4.1.3", default-features = false }

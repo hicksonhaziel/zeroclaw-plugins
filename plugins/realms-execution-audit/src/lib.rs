@@ -7,8 +7,8 @@
 //! logic lives in [`core`]; this file remains the thin WIT adapter.
 
 pub mod config;
-pub mod core;
 pub mod rpc;
+pub use mandate_core::core;
 
 use crate::core::audit::{run_audit, AuditOutcome};
 use crate::core::audit_error::AuditError;

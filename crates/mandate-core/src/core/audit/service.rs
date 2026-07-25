@@ -20,6 +20,15 @@ use crate::core::rpc::{
     account_info_request, multiple_accounts_request, parse_multiple_accounts, parse_single_account,
     AccountObservation, HttpResponse, RpcRequest, RpcTransport,
 };
+use sha2::{Digest, Sha256};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AccountSecurityBinding {
+    pub address: Pubkey,
+    pub owner: Option<Pubkey>,
+    pub executable: Option<bool>,
+    pub data_sha256: Option<[u8; 32]>,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AuditComplete {
@@ -27,6 +36,12 @@ pub struct AuditComplete {
     pub governance: Pubkey,
     pub realm: Pubkey,
     pub governance_program: Pubkey,
+    pub governing_token_mint: Pubkey,
+    pub proposal_owner_record: Pubkey,
+    pub proposal_state: u8,
+    pub voting_at: Option<i64>,
+    pub voting_base_time: u32,
+    pub voting_cool_off_time: u32,
     pub first_observed_slot: u64,
     pub last_observed_slot: u64,
     pub authoritative_slot: u64,
@@ -37,6 +52,8 @@ pub struct AuditComplete {
     pub execution_fingerprint: Fingerprint,
     pub evidence_fingerprint: Fingerprint,
     pub analysis: AnalysisReport,
+    pub transaction_positions: Vec<(u8, u16, Pubkey)>,
+    pub security_bindings: Vec<AccountSecurityBinding>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -244,6 +261,23 @@ fn run_audit_inner<T: RpcTransport>(
     )
     .map_err(|_| AuditError::Governance)?;
     let execution_fingerprint = fingerprint_v1(&execution).map_err(|_| AuditError::Governance)?;
+    let security_bindings = observations
+        .iter()
+        .map(|observation| match &observation.account {
+            Some(account) => AccountSecurityBinding {
+                address: observation.address,
+                owner: Some(account.owner),
+                executable: Some(account.executable),
+                data_sha256: Some(Sha256::digest(&account.data).into()),
+            },
+            None => AccountSecurityBinding {
+                address: observation.address,
+                owner: None,
+                executable: None,
+                data_sha256: None,
+            },
+        })
+        .collect();
     let evidence_fingerprint = fingerprint_evidence_v1(&EvidenceSnapshot {
         execution_fingerprint,
         governance_program,
@@ -265,6 +299,12 @@ fn run_audit_inner<T: RpcTransport>(
         governance: execution.governance,
         realm: execution.realm,
         governance_program,
+        governing_token_mint: final_proposal_model.governing_token_mint,
+        proposal_owner_record: final_proposal_model.token_owner_record,
+        proposal_state: final_proposal_model.state,
+        voting_at: final_proposal_model.voting_at,
+        voting_base_time: final_governance_model.voting_base_time,
+        voting_cool_off_time: final_governance_model.voting_cool_off_time,
         first_observed_slot: proposal_context.slot,
         last_observed_slot: final_context.slot,
         authoritative_slot: final_context.slot,
@@ -279,6 +319,8 @@ fn run_audit_inner<T: RpcTransport>(
         execution_fingerprint,
         evidence_fingerprint,
         analysis,
+        transaction_positions: transaction_roles,
+        security_bindings,
     })
 }
 

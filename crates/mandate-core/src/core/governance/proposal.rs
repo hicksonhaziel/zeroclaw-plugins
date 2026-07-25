@@ -24,7 +24,9 @@ pub struct ProposalAccount {
     pub address: Pubkey,
     pub governance: Pubkey,
     pub governing_token_mint: Pubkey,
+    pub token_owner_record: Pubkey,
     pub state: u8,
+    pub voting_at: Option<i64>,
     pub options: Vec<ProposalOption>,
     pub execution_flags: u8,
 }
@@ -36,7 +38,7 @@ pub fn parse_proposal(snapshot: &AccountSnapshot<'_>) -> Result<ProposalAccount,
     let governance = cursor.read_pubkey()?;
     let governing_token_mint = cursor.read_pubkey()?;
     let state = read_small_enum(&mut cursor, 9)?;
-    let _token_owner_record = cursor.read_pubkey()?;
+    let token_owner_record = cursor.read_pubkey()?;
     let _signatory_count = cursor.read_u8()?;
     let _signed_count = cursor.read_u8()?;
     read_vote_type(&mut cursor)?;
@@ -69,7 +71,7 @@ pub fn parse_proposal(snapshot: &AccountSnapshot<'_>) -> Result<ProposalAccount,
     let _start_at = cursor.read_option_i64()?;
     let _draft_at = cursor.read_i64()?;
     let _signing_at = cursor.read_option_i64()?;
-    let _voting_at = cursor.read_option_i64()?;
+    let voting_at = cursor.read_option_i64()?;
     let _voting_slot = cursor.read_option_u64()?;
     let _voting_completed = cursor.read_option_i64()?;
     let _executing_at = cursor.read_option_i64()?;
@@ -93,7 +95,9 @@ pub fn parse_proposal(snapshot: &AccountSnapshot<'_>) -> Result<ProposalAccount,
         address: snapshot.address,
         governance,
         governing_token_mint,
+        token_owner_record,
         state,
+        voting_at,
         options,
         execution_flags,
     })
